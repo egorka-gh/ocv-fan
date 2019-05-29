@@ -53,6 +53,7 @@
                         <video id="videoInput" width=320 height=240></video>
                     </div>
                     <ul class="list-group list-group-flush">
+
                         <li class="list-group-item">
                             <button type="button" id="startAndStop" class="btn btn-primary" disabled>Start</button>
                         </li>
@@ -68,15 +69,16 @@
                     <div class="card-block">
                         <canvas id="canvasOutput" width=320 height=240></canvas>
                     </div>
-                    <!--                     <ul class="list-group list-group-flush">
+                    <ul class="list-group list-group-flush">
                         <li class="list-group-item">
-                            <button type="button" id="circlesButton" class="btn btn-primary">Circle Detection</button>
+                            <input type="range" id="hcp1" name="hcp1" min="10" max="255" value="175" step="5">
+                            <span id="hcp1lbl">150</span>
+                        </li>
+                        <li class="list-group-item">
+                            <input type="range" id="hcp2" name="hcp2" min="10" max="100" value="75" step="5">
+                            <span id="hcp2lbl">40</span>
                         </li>
                     </ul>
-                    <div class="card-footer">
-                        <a href="#" id="button" class="card-link">Download Image</a>
-                    </div>
- -->
                 </div>
             </div>
 
@@ -105,7 +107,7 @@
         startAndStop.addEventListener('click', () => {
             if (!streaming) {
                 utils.clearError();
-                utils.startCamera('qvga', onVideoStarted, 'videoInput');
+                utils.startCamera('vga', onVideoStarted, 'videoInput');
             } else {
                 utils.stopCamera();
                 onVideoStopped();
@@ -141,7 +143,22 @@
         let gray = null; //new cv.Mat();
         let cap = null; //new cv.VideoCapture(video);
         let faces = null; //new cv.RectVector();
+        let circles = null; //new cv.Mat();
         let classifier = null; //new cv.CascadeClassifier();
+
+        let hcp1Input = document.getElementById('hcp1');
+        let hcp2Input = document.getElementById('hcp2');
+
+        let hcp1 = hcp1Input.valueAsNumber;
+        let hcp2 = hcp2Input.valueAsNumber;
+        hcp1Input.oninput = function() {
+            hcp1 = hcp1Input.valueAsNumber;
+            document.getElementById('hcp1lbl').textContent = hcp1;
+        };
+        hcp2Input.oninput = function() {
+            hcp2 = hcp2Input.valueAsNumber;
+            document.getElementById('hcp2lbl').textContent = hcp2;
+        };
 
         // load pre-trained classifiers
         //classifier.load('haarcascade_frontalface_default.xml');
@@ -156,6 +173,7 @@
                     dst.delete();
                     gray.delete();
                     faces.delete();
+                    circles.delete();
                     classifier.delete();
                     return;
                 }
@@ -163,7 +181,9 @@
                 // start processing.
                 cap.read(src);
                 src.copyTo(dst);
+                cv.flip(dst, dst, 1);
                 cv.cvtColor(dst, gray, cv.COLOR_RGBA2GRAY, 0);
+                /*
                 // detect faces.
                 classifier.detectMultiScale(gray, faces, 1.1, 3, 0);
                 // draw faces.
@@ -173,6 +193,22 @@
                     let point2 = new cv.Point(face.x + face.width, face.y + face.height);
                     cv.rectangle(dst, point1, point2, [255, 0, 0, 255]);
                 }
+                */
+
+                let ksize = new cv.Size(3, 3);
+                cv.GaussianBlur(gray, gray, ksize, 0, 0, cv.BORDER_DEFAULT);
+
+                cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT,
+                    1, 30, hcp1, hcp2, 0, 0);
+                // draw circles
+                for (let i = 0; i < circles.cols; ++i) {
+                    let x = circles.data32F[i * 3];
+                    let y = circles.data32F[i * 3 + 1];
+                    let radius = circles.data32F[i * 3 + 2];
+                    let center = new cv.Point(x, y);
+                    cv.circle(dst, center, radius, [0, 0, 0, 255], 3);
+                }
+
                 cv.imshow('canvasOutput', dst);
                 // schedule the next one.
                 let delay = 1000 / FPS - (Date.now() - begin);
@@ -188,6 +224,7 @@
             gray = new cv.Mat();
             cap = new cv.VideoCapture(video);
             faces = new cv.RectVector();
+            circles = new cv.Mat();
             classifier = new cv.CascadeClassifier();
 
             classifier.load('haarcascade_frontalface_default.xml');
