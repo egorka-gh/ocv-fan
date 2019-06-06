@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <script src='js/lib/three.js'></script>
+<!-- <script src='js/lib/OrbitControls.js'></script> -->
 <script src='js/lib/threex.planets.js'></script>
 
 <body style='margin: 0px; background-color: gray ; overflow: hidden;'>
@@ -55,19 +56,33 @@
         // scene.add(mesh)
         // var mesh	= THREEx.Planets.createMoon()
         // scene.add(mesh)
+
+        //var controls = new THREE.OrbitControls(camera, renderer.domElement);
+        //controls.update();
+
+        var plane = new THREE.Plane();
+        plane = plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0));
+        var helper = new THREE.PlaneHelper(plane, 2, 0xffff00);
+        //scene.add(plane);
+        scene.add(helper);
+
+        var containerEarth = new THREE.Object3D()
+        containerEarth.rotation.x = 10 * Math.PI / 180;
+        containerEarth.position.x = 0;
+        scene.add(containerEarth)
+
         var earthMesh = THREEx.Planets.createEarth()
-        earthMesh.rotation.x = 10 * Math.PI / 180;
-        earthMesh.position.x = 0;
-        /*
+            /*
         earthMesh.rotation.z = -23.4 * Math.PI / 180;
         earthMesh.position.z = 0;
 		*/
-        scene.add(earthMesh)
+        containerEarth.add(earthMesh)
         updateFcts.push(function(delta, now) {
             earthMesh.rotation.y += 1 / 16 * delta;
         })
+
         var mesh = THREEx.Planets.createEarthCloud()
-        scene.add(mesh)
+        containerEarth.add(mesh)
         updateFcts.push(function(delta, now) {
                 mesh.rotation.y += 1 / 8 * delta;
             })
@@ -104,27 +119,52 @@
         //////////////////////////////////////////////////////////////////////////////////
         //		Camera Controls							//
         //////////////////////////////////////////////////////////////////////////////////
-        /*
+        /**/
         var mouse = {
             x: 0,
             y: 0
         }
         document.addEventListener('mousemove', function(event) {
-            mouse.x = (event.clientX / window.innerWidth) - 0.5
-            mouse.y = (event.clientY / window.innerHeight) - 0.5
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         }, false)
+
         updateFcts.push(function(delta, now) {
-            camera.position.x += (mouse.x * 5 - camera.position.x) * (delta * 3)
-            camera.position.y += (mouse.y * 5 - camera.position.y) * (delta * 3)
-            camera.lookAt(scene.position)
-        })
-		*/
+                var raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                /*
+                var intersects = raycaster .intersectObject(plane);
+                if (intersects.length === 1) {
+                    containerEarth.position.set(intersects[0].point);
+                }
+                */
+                var ray = raycaster.ray;
+                if (ray.intersectsPlane(plane)) {
+                    var p = new THREE.Vector3();
+                    ray.intersectPlane(plane, p);
+                    // console.log(p);
+                    containerEarth.position.x = p.x;
+                    containerEarth.position.y = p.y;
+                    containerEarth.position.z = p.z;
+
+                }
+            })
+            /*
+                    var mouse = new THREE.Vector2();
+                    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; 
+
+                    var raycaster = new THREE.Raycaster();
+                    raycaster.setFromCamera(mouse, camera);
+                    var intersects = raycaster.intersectObjects(scene.children);                
+            */
 
 
         //////////////////////////////////////////////////////////////////////////////////
         //		render the scene						//
         //////////////////////////////////////////////////////////////////////////////////
         updateFcts.push(function() {
+            //controls.update();
             renderer.render(scene, camera);
         })
 
@@ -133,16 +173,32 @@
         //////////////////////////////////////////////////////////////////////////////////
         var lastTimeMsec = null
         requestAnimationFrame(function animate(nowMsec) {
-            // keep looping
-            requestAnimationFrame(animate);
-            // measure time
-            lastTimeMsec = lastTimeMsec || nowMsec - 1000 / 60
-            var deltaMsec = Math.min(200, nowMsec - lastTimeMsec)
-            lastTimeMsec = nowMsec
-                // call each update function
-            updateFcts.forEach(function(updateFn) {
-                updateFn(deltaMsec / 1000, nowMsec / 1000)
+                // keep looping
+                requestAnimationFrame(animate);
+                // measure time
+                lastTimeMsec = lastTimeMsec || nowMsec - 1000 / 60
+                var deltaMsec = Math.min(200, nowMsec - lastTimeMsec)
+                lastTimeMsec = nowMsec
+                    // call each update function
+                updateFcts.forEach(function(updateFn) {
+                    updateFn(deltaMsec / 1000, nowMsec / 1000)
+                })
             })
-        })
+            /*
+                boundingBox = new THREE.Box3().setFromObject(your_object)
+                size = boundingBox.getSize() // Returns Vector3
+                scaleFactor = otherSize.x / mySize.x 
+                myObject.scale(scaleFactor, scaleFactor, scaleFactor)
+
+
+                var mouse = new THREE.Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; 
+
+                var raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                var intersects = raycaster.intersectObjects(scene.children);                
+
+            */
     </script>
 </body>
