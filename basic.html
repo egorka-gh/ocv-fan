@@ -4,212 +4,164 @@
 <script src='js/lib/threex.planets.js'></script>
 
 <body style='margin: 0px; background-color: gray ; overflow: hidden;'>
+
+    <canvas id="canvasOutput" width=640 height=480></canvas>
+
     <script>
-        var renderer = new THREE.WebGLRenderer({
-            alpha: true,
-            antialias: true
-        });
-        var aspect = window.innerWidth / window.innerHeight;
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-        renderer.shadowMap.Enabled = true
-
+        var lastTimeMsec = null;
         var updateFcts = [];
-        var scene = new THREE.Scene();
 
-        /*
-        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100);
-        camera.position.z = 3;
-        */
+        function init(canvasName) {
+            let canvas = document.getElementById(canvasName);
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
 
-        const camera = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, 0, 50);
-        camera.zoom = 0.3;
+            var renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                alpha: true,
+                antialias: true
+            });
+            var aspect = width / height;
+            renderer.setSize(width, height);
+            //var aspect = window.innerWidth / window.innerHeight;
+            //renderer.setSize(window.innerWidth, window.innerHeight);
+            //document.body.appendChild(renderer.domElement);
+            renderer.shadowMap.Enabled = true
 
-        var light = new THREE.AmbientLight(0x555555)
-        scene.add(light)
-            // var light	= new THREE.DirectionalLight( 'white', 1)
-            // light.position.set(5,5,5)
-            // light.target.position.set( 0, 0, 0 )
-            // scene.add( light )
+            var scene = new THREE.Scene();
 
-        var light = new THREE.DirectionalLight(0xcccccc, 1)
-        light.position.set(5, 5, 4)
-        scene.add(light)
-        light.castShadow = true
-        light.shadow.camera.near = 0.01
-        light.shadow.camera.far = 15
-        light.shadow.camera.fov = 45
-
-        light.shadow.camera.left = -1
-        light.shadow.camera.right = 1
-        light.shadow.camera.top = 1
-        light.shadow.camera.bottom = -1
-            // light.shadowCameraVisible	= true
-
-        light.shadow.bias = 0.001
-            //light.shadowDarkness = 0.2
-
-        light.shadow.mapSize.width = 1024
-        light.shadow.mapSize.height = 1024
-
-        //////////////////////////////////////////////////////////////////////////////////
-        //		add an object and make it move					//
-        //////////////////////////////////////////////////////////////////////////////////
-        // var mesh	= THREEx.Planets.createSun()
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createMercury()
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createVenus()
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createMoon()
-        // scene.add(mesh)
-
-        //var controls = new THREE.OrbitControls(camera, renderer.domElement);
-        //controls.update();
-
-        var plane = new THREE.Plane();
-        plane = plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1));
-
-        /*
-        var helper = new THREE.PlaneHelper(plane, 2, 0xffff00);
-        scene.add(helper);
-        */
-
-        var containerEarth = new THREE.Object3D()
-        containerEarth.rotation.x = 10 * Math.PI / 180;
-        containerEarth.position.x = 0;
-        containerEarth.position.z = -1;
-        scene.add(containerEarth)
-
-        var earthMesh = THREEx.Planets.createEarth()
             /*
-        earthMesh.rotation.z = -23.4 * Math.PI / 180;
-        earthMesh.position.z = 0;
-		*/
-        containerEarth.add(earthMesh)
-        updateFcts.push(function(delta, now) {
-            earthMesh.rotation.y += 1 / 16 * delta;
-        })
-
-        var mesh = THREEx.Planets.createEarthCloud();
-        containerEarth.add(mesh);
-        updateFcts.push(function(delta, now) {
-            mesh.rotation.y += 1 / 8 * delta;
-        });
-        var boundingBox = new THREE.Box3().setFromObject(containerEarth);
-        var earthRadius = boundingBox.getSize().x / 2;
-
-        // var mesh	= THREEx.Planets.createMars()
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createJupiter()
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createSaturn()
-        // mesh.receiveShadow	= true
-        // mesh.castShadow		= true
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createSaturnRing()
-        // mesh.receiveShadow	= true
-        // mesh.castShadow		= true
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createUranus()
-        // mesh.receiveShadow	= true
-        // mesh.castShadow		= true
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createUranusRing()
-        // mesh.receiveShadow	= true
-        // mesh.castShadow		= true
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createNeptune()
-        // scene.add(mesh)
-        // var mesh	= THREEx.Planets.createPluto()
-        // scene.add(mesh)
-
-        updateFcts.push(function(delta, now) {
-            //mesh.rotation.x += 1 * delta;
-            //mesh.rotation.y += 1/2 * delta;		
-        })
-
-        //////////////////////////////////////////////////////////////////////////////////
-        //		Camera Controls							//
-        //////////////////////////////////////////////////////////////////////////////////
-        /**/
-        var mouse = {
-            x: 0,
-            y: 0
-        }
-        document.addEventListener('mousemove', function(event) {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        }, false)
-
-        updateFcts.push(function(delta, now) {
-            var raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(mouse, camera);
-            /*
-            var intersects = raycaster .intersectObject(plane);
-            if (intersects.length === 1) {
-                containerEarth.position.set(intersects[0].point);
-            }
+            var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100);
+            camera.position.z = 3;
             */
-            var ray = raycaster.ray;
-            if (ray.intersectsPlane(plane)) {
-                var p = new THREE.Vector3();
-                ray.intersectPlane(plane, p);
-                /* move
-                containerEarth.position.x = p.x;
-                containerEarth.position.y = p.y;
-                containerEarth.position.z = p.z;
-                */
-                //resize
-                var newr = Math.min(Math.max(Math.abs(p.x), 0.2), 1);
-                var scaleFactor = newr / earthRadius;
-                containerEarth.scale.x = scaleFactor;
-                containerEarth.scale.y = scaleFactor;
-                containerEarth.scale.z = scaleFactor;
 
-            }
-        })
+            const camera = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, 0, 50);
+            camera.zoom = 0.3;
 
+            var light = new THREE.AmbientLight(0x555555)
+            scene.add(light)
 
-        //////////////////////////////////////////////////////////////////////////////////
-        //		render the scene						//
-        //////////////////////////////////////////////////////////////////////////////////
-        updateFcts.push(function() {
+            var light = new THREE.DirectionalLight(0xcccccc, 1)
+            light.position.set(5, 5, 4)
+            scene.add(light)
+            light.castShadow = true
+            light.shadow.camera.near = 0.01
+            light.shadow.camera.far = 15
+            light.shadow.camera.fov = 45
+
+            light.shadow.camera.left = -1
+            light.shadow.camera.right = 1
+            light.shadow.camera.top = 1
+            light.shadow.camera.bottom = -1
+
+            light.shadow.bias = 0.001
+                //light.shadowDarkness = 0.2
+
+            light.shadow.mapSize.width = 1024
+            light.shadow.mapSize.height = 1024
+
+            //////////////////////////////////////////////////////////////////////////////////
+            //		add an object and make it move					//
+            //////////////////////////////////////////////////////////////////////////////////
+
+            //var controls = new THREE.OrbitControls(camera, renderer.domElement);
             //controls.update();
-            renderer.render(scene, camera);
-        })
 
+            var plane = new THREE.Plane();
+            plane = plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1));
+
+            /*
+            var helper = new THREE.PlaneHelper(plane, 2, 0xffff00);
+            scene.add(helper);
+            */
+
+            var containerEarth = new THREE.Object3D();
+            containerEarth.rotation.x = 10 * Math.PI / 180;
+            containerEarth.position.x = 0;
+            containerEarth.position.z = -1;
+            scene.add(containerEarth);
+
+            var earthMesh = THREEx.Planets.createEarth();
+            updateFcts.push(function(delta, now) {
+                earthMesh.rotation.y += 1 / 16 * delta;
+            });
+            containerEarth.add(earthMesh);
+
+            var mesh = THREEx.Planets.createEarthCloud();
+            containerEarth.add(mesh);
+            updateFcts.push(function(delta, now) {
+                mesh.rotation.y += 1 / 8 * delta;
+            });
+            var boundingBox = new THREE.Box3().setFromObject(containerEarth);
+            var earthRadius = boundingBox.getSize().x / 2;
+
+
+            //////////////////////////////////////////////////////////////////////////////////
+            //		Mouse Controls							//
+            //////////////////////////////////////////////////////////////////////////////////
+            /**/
+            var mouse = {
+                x: 0,
+                y: 0
+            }
+            document.addEventListener('mousemove', function(event) {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            }, false)
+
+            updateFcts.push(function(delta, now) {
+                var raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                /*
+                var intersects = raycaster .intersectObject(plane);
+                if (intersects.length === 1) {
+                    containerEarth.position.set(intersects[0].point);
+                }
+                */
+                var ray = raycaster.ray;
+                if (ray.intersectsPlane(plane)) {
+                    var p = new THREE.Vector3();
+                    ray.intersectPlane(plane, p);
+                    /* move
+                    containerEarth.position.x = p.x;
+                    containerEarth.position.y = p.y;
+                    containerEarth.position.z = p.z;
+                    */
+                    //resize
+                    var newr = Math.min(Math.max(Math.abs(p.x), 0.2), 1);
+                    var scaleFactor = newr / earthRadius;
+                    containerEarth.scale.x = scaleFactor;
+                    containerEarth.scale.y = scaleFactor;
+                    containerEarth.scale.z = scaleFactor;
+
+                }
+            })
+
+
+            //////////////////////////////////////////////////////////////////////////////////
+            //		render the scene						//
+            //////////////////////////////////////////////////////////////////////////////////
+            updateFcts.push(function() {
+                //controls.update();
+                renderer.render(scene, camera);
+            });
+        }
+
+        init('canvasOutput');
         //////////////////////////////////////////////////////////////////////////////////
         //		loop runner							//
         //////////////////////////////////////////////////////////////////////////////////
-        var lastTimeMsec = null
         requestAnimationFrame(function animate(nowMsec) {
-                // keep looping
-                requestAnimationFrame(animate);
-                // measure time
-                lastTimeMsec = lastTimeMsec || nowMsec - 1000 / 60
-                var deltaMsec = Math.min(200, nowMsec - lastTimeMsec)
-                lastTimeMsec = nowMsec
-                    // call each update function
-                updateFcts.forEach(function(updateFn) {
-                    updateFn(deltaMsec / 1000, nowMsec / 1000)
-                })
-            })
-            /*
-                boundingBox = new THREE.Box3().setFromObject(your_object)
-                size = boundingBox.getSize() // Returns Vector3
-                scaleFactor = otherSize.x / mySize.x 
-                myObject.scale(scaleFactor, scaleFactor, scaleFactor)
-
-
-                var mouse = new THREE.Vector2();
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1; 
-
-                var raycaster = new THREE.Raycaster();
-                raycaster.setFromCamera(mouse, camera);
-                var intersects = raycaster.intersectObjects(scene.children);                
-
-            */
+            // keep looping
+            requestAnimationFrame(animate);
+            // measure time
+            lastTimeMsec = lastTimeMsec || nowMsec - 1000 / 60;
+            var deltaMsec = Math.min(200, nowMsec - lastTimeMsec);
+            lastTimeMsec = nowMsec;
+            // call each update function
+            updateFcts.forEach(function(updateFn) {
+                updateFn(deltaMsec / 1000, nowMsec / 1000)
+            });
+        });
     </script>
 </body>
