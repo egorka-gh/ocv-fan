@@ -2,6 +2,8 @@ var Earth3D = Earth3D || {};
 
 Earth3D.lastTimeMsec = null;
 Earth3D.updateFcts = [];
+Earth3D.earth = null;
+Earth3D.visible = false;
 
 Earth3D.init = function(canvasName) {
     let canvas = document.getElementById(canvasName);
@@ -62,6 +64,7 @@ Earth3D.init = function(canvasName) {
     containerEarth.rotation.x = 10 * Math.PI / 180;
     containerEarth.position.x = 0;
     containerEarth.position.z = -1;
+    containerEarth.visible = Earth3D.visible;
     scene.add(containerEarth);
 
     var earthMesh = THREEx.Planets.createEarth();
@@ -77,6 +80,7 @@ Earth3D.init = function(canvasName) {
     });
     var boundingBox = new THREE.Box3().setFromObject(containerEarth);
     var earthRadius = boundingBox.getSize().x / 2;
+    Earth3D.earth = containerEarth;
 
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +130,7 @@ Earth3D.init = function(canvasName) {
     //////////////////////////////////////////////////////////////////////////////////
     Earth3D.updateFcts.push(function() {
         //controls.update();
+        containerEarth.visible = Earth3D.visible;
         renderer.render(scene, camera);
     });
 }
@@ -146,4 +151,5 @@ Earth3D.start = function() {
             updateFn(deltaMsec / 1000, nowMsec / 1000)
         });
     });
+
 }

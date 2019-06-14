@@ -143,7 +143,14 @@
         let gray = null; //new cv.Mat();
         let cap = null; //new cv.VideoCapture(video);
         let faces = null; //new cv.RectVector();
-        let circles = null; //new cv.Mat();
+        //let circles = null; //new cv.Mat();
+
+        let circlesCache = null;
+        const circlesCacheSize = 10;
+        let circlesCachIndex = 0;
+        let circlesCached = 0;
+        let circlesSkipped = 0;
+
         let classifier = null; //new cv.CascadeClassifier();
 
         let hcp1Input = document.getElementById('hcp1');
@@ -173,8 +180,11 @@
                     dst.delete();
                     gray.delete();
                     faces.delete();
-                    circles.delete();
                     classifier.delete();
+                    if (circlesCache !== null) {
+                        circlesCache.delete();
+                        circlesCache = null;
+                    }
                     return;
                 }
                 let begin = Date.now();
@@ -196,17 +206,64 @@
                 */
 
                 let ksize = new cv.Size(3, 3);
-                cv.GaussianBlur(gray, gray, ksize, 0, 0, cv.BORDER_DEFAULT);
+                //cv.GaussianBlur(gray, gray, ksize, 0, 0, cv.BORDER_DEFAULT);
 
+                let circles = new cv.Mat();
                 cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT,
-                    1, 30, hcp1, hcp2, 0, 0);
-                // draw circles
+                    2, 30, hcp1, hcp2, 0, 0);
+
+                // draw circles all
                 for (let i = 0; i < circles.cols; ++i) {
                     let x = circles.data32F[i * 3];
                     let y = circles.data32F[i * 3 + 1];
                     let radius = circles.data32F[i * 3 + 2];
                     let center = new cv.Point(x, y);
                     cv.circle(dst, center, radius, [0, 0, 0, 255], 3);
+                }
+
+                //process circles cache
+                if (circles.cols > 0) {
+                    circlesSkipped = 0
+                    if (circlesCache === null) {
+                        circlesCached = 0;
+                        circlesCachIndex = 0;
+                        circlesCache = cv.Mat.zeros(1, circlesCacheSize, circles.type());
+                    }
+                    //save topmost circle into chache
+                    circlesCache.data32F[circlesCachIndex * 3] = circles.data32F[0];
+                    circlesCache.data32F[circlesCachIndex * 3 + 1] = circles.data32F[1];
+                    circlesCache.data32F[circlesCachIndex * 3 + 2] = circles.data32F[2];
+                    circlesCachIndex = (circlesCachIndex + 1) % circlesCacheSize;
+
+                    if (circlesCached < circlesCacheSize) {
+                        //waite till cache filled
+                        circlesCached++;
+                    }
+                    /*
+                    else {
+                        //get avg and draw
+                        let mean = cv.mean(circlesCache);
+                        let center = new cv.Point(mean[0], mean[1]);
+                        cv.circle(dst, center, mean[2], [255, 0, 0, 255], 3);
+
+                    }
+                    */
+                } else {
+                    circlesSkipped++;
+                    if (circlesSkipped > circlesCacheSize) {
+                        circlesCachIndex = 0;
+                        circlesCached = 0;
+                        circlesSkipped = 0;
+                    }
+                }
+                circles.delete();
+
+                if (circlesCached >= circlesCacheSize) {
+                    //get avg and draw
+                    let mean = cv.mean(circlesCache);
+                    let center = new cv.Point(mean[0], mean[1]);
+                    cv.circle(dst, center, mean[2], [255, 0, 0, 255], 3);
+
                 }
 
                 cv.imshow('canvasOutput', dst);
@@ -218,13 +275,18 @@
             }
         };
 
+        function resetCirclesCache() {
+            //circlesCache.delete();
+            //circlesCache = null;
+        }
+
+
         function startProcessVideo() {
             src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
             dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
             gray = new cv.Mat();
             cap = new cv.VideoCapture(video);
             faces = new cv.RectVector();
-            circles = new cv.Mat();
             classifier = new cv.CascadeClassifier();
 
             classifier.load('haarcascade_frontalface_default.xml');
