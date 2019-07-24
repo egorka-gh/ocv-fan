@@ -72,11 +72,11 @@
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item">
                             <input type="range" id="hcp1" name="hcp1" min="10" max="255" value="175" step="5">
-                            <span id="hcp1lbl">150</span>
+                            <span id="hcp1lbl">175</span>
                         </li>
                         <li class="list-group-item">
                             <input type="range" id="hcp2" name="hcp2" min="10" max="100" value="75" step="5">
-                            <span id="hcp2lbl">40</span>
+                            <span id="hcp2lbl">75</span>
                         </li>
                     </ul>
                 </div>
@@ -146,6 +146,8 @@
         //let circles = null; //new cv.Mat();
 
         let circlesCache = null;
+        let lastCenterX = 0;
+        let lastCenterY = 0;
         const circlesCacheSize = 10;
         let circlesCachIndex = 0;
         let circlesCached = 0;
@@ -193,6 +195,7 @@
                 src.copyTo(dst);
                 cv.flip(dst, dst, 1);
                 cv.cvtColor(dst, gray, cv.COLOR_RGBA2GRAY, 0);
+                //cv.threshold(gray, gray, 220, 255, cv.THRESH_BINARY);
                 /*
                 // detect faces.
                 classifier.detectMultiScale(gray, faces, 1.1, 3, 0);
@@ -210,7 +213,7 @@
 
                 let circles = new cv.Mat();
                 cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT,
-                    2, 30, hcp1, hcp2, 0, 0);
+                    2, 30, hcp1, hcp2, 10, 0);
 
                 // draw circles all
                 for (let i = 0; i < circles.cols; ++i) {
@@ -223,50 +226,62 @@
 
                 //process circles cache
                 if (circles.cols > 0) {
-                    circlesSkipped = 0
                     if (circlesCache === null) {
                         circlesCached = 0;
                         circlesCachIndex = 0;
                         circlesCache = cv.Mat.zeros(1, circlesCacheSize, circles.type());
                     }
                     //save topmost circle into chache
-                    circlesCache.data32F[circlesCachIndex * 3] = circles.data32F[0];
-                    circlesCache.data32F[circlesCachIndex * 3 + 1] = circles.data32F[1];
-                    circlesCache.data32F[circlesCachIndex * 3 + 2] = circles.data32F[2];
-                    circlesCachIndex = (circlesCachIndex + 1) % circlesCacheSize;
-
-                    if (circlesCached < circlesCacheSize) {
-                        //waite till cache filled
-                        circlesCached++;
-                    }
+                    let x = circles.data32F[0];
+                    let y = circles.data32F[1];
+                    let radius = circles.data32F[2];
                     /*
-                    else {
-                        //get avg and draw
-                        let mean = cv.mean(circlesCache);
-                        let center = new cv.Point(mean[0], mean[1]);
-                        cv.circle(dst, center, mean[2], [255, 0, 0, 255], 3);
-
+                    if (x == 0 && y == 0 && radius == 0) {
+                        cv.rectangle(dst, new cv.Point(0, 0), new cv.Point(20, 20), [255, 0, 0, 255], 5);
                     }
                     */
+                    if (x > 0 && y > 0 && radius > 0) {
+                        circlesSkipped = 0;
+                        lastCenterX = x;
+                        lastCenterY = y
+                        circlesCache.data32F[circlesCachIndex * 3] = lastCenterX;
+                        circlesCache.data32F[circlesCachIndex * 3 + 1] = lastCenterY;
+                        circlesCache.data32F[circlesCachIndex * 3 + 2] = radius;
+                        circlesCachIndex = (circlesCachIndex + 1) % circlesCacheSize;
+
+                        //waite till cache filled
+                        if (circlesCached < circlesCacheSize) {
+                            circlesCached++;
+                        }
+                    } else {
+                        circlesSkipped++;
+                    }
                 } else {
                     circlesSkipped++;
-                    if (circlesSkipped > circlesCacheSize) {
-                        circlesCachIndex = 0;
-                        circlesCached = 0;
-                        circlesSkipped = 0;
-                    }
                 }
+
                 circles.delete();
 
+                //reset cache on skip limit
+                if (circlesSkipped > circlesCacheSize) {
+                    circlesCachIndex = 0;
+                    circlesCached = 0;
+                    circlesSkipped = 0;
+                }
+
+                //draw circle
                 if (circlesCached >= circlesCacheSize) {
                     //get avg and draw
                     let mean = cv.mean(circlesCache);
-                    let center = new cv.Point(mean[0], mean[1]);
+                    //let center = new cv.Point((lastCenterX + mean[0]) / 2, (lastCenterY + mean[1]) / 2);
+                    let center = new cv.Point(lastCenterX, lastCenterY);
                     cv.circle(dst, center, mean[2], [255, 0, 0, 255], 3);
 
                 }
 
                 cv.imshow('canvasOutput', dst);
+                //cv.imshow('canvasOutput', gray);
+
                 // schedule the next one.
                 let delay = 1000 / FPS - (Date.now() - begin);
                 setTimeout(processVideo, delay);
