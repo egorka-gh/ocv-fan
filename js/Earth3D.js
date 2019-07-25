@@ -87,6 +87,7 @@ Earth3D.init = function(canvasName) {
     //		Mouse Controls							//
     //////////////////////////////////////////////////////////////////////////////////
     /**/
+    /*
     var mouse = {
         x: 0,
         y: 0
@@ -96,24 +97,14 @@ Earth3D.init = function(canvasName) {
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }, false)
 
+    //project mouse
     Earth3D.updateFcts.push(function(delta, now) {
         var raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, camera);
-        /*
-        var intersects = raycaster .intersectObject(plane);
-        if (intersects.length === 1) {
-            containerEarth.position.set(intersects[0].point);
-        }
-        */
         var ray = raycaster.ray;
         if (ray.intersectsPlane(plane)) {
             var p = new THREE.Vector3();
             ray.intersectPlane(plane, p);
-            /* move
-            containerEarth.position.x = p.x;
-            containerEarth.position.y = p.y;
-            containerEarth.position.z = p.z;
-            */
             //resize
             var newr = Math.min(Math.max(Math.abs(p.x), 0.2), 1);
             var scaleFactor = newr / earthRadius;
@@ -123,14 +114,60 @@ Earth3D.init = function(canvasName) {
 
         }
     })
+    */
 
+    //project cicle to Earth & move resize Earth
+    Earth3D.updateFcts.push(function(delta, now) {
+        if (Earth3D.visible && Earth3D.cyrcleMoved) {
+            //normalise position
+            var cyrcle = new THREE.Vector3();
+            cyrcle.x = (Earth3D.lastCyrcle2D.x / width) * 2 - 1;
+            cyrcle.y = -(Earth3D.lastCyrcle2D.y / height) * 2 + 1;
+            cyrcle.z = (Earth3D.lastCyrcle2D.z / width) * 2 - 1;
+
+            //move Earth
+            var p = {
+                x: cyrcle.x,
+                y: cyrcle.y
+            }
+            var raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(p, camera);
+            var ray = raycaster.ray;
+            //TODO save plane in Earth3D ??
+            if (ray.intersectsPlane(plane)) {
+                var intersect = new THREE.Vector3();
+                ray.intersectPlane(plane, intersect);
+                containerEarth.position.x = intersect.x;
+                containerEarth.position.y = intersect.y;
+                containerEarth.position.z = intersect.z;
+            }
+
+            //resize Earth
+            p.x = cyrcle.z;
+            raycaster.setFromCamera(p, camera);
+            ray = raycaster.ray;
+            if (ray.intersectsPlane(plane)) {
+                var intersect = new THREE.Vector3();
+                ray.intersectPlane(plane, intersect);
+                //resize
+                var newr = Math.min(Math.max(Math.abs(intersect.x), 0.2), 1);
+                var scaleFactor = newr / earthRadius;
+                containerEarth.scale.x = scaleFactor;
+                containerEarth.scale.y = scaleFactor;
+                containerEarth.scale.z = scaleFactor;
+
+            }
+        }
+        if (containerEarth.visible != Earth3D.visible) {
+            containerEarth.visible = Earth3D.visible;
+        }
+    });
 
     //////////////////////////////////////////////////////////////////////////////////
     //		render the scene						//
     //////////////////////////////////////////////////////////////////////////////////
     Earth3D.updateFcts.push(function() {
         //controls.update();
-        containerEarth.visible = Earth3D.visible;
         renderer.render(scene, camera);
     });
 }
@@ -151,5 +188,19 @@ Earth3D.start = function() {
             updateFn(deltaMsec / 1000, nowMsec / 1000)
         });
     });
+}
 
+Earth3D.lastCyrcle2D = new THREE.Vector3();
+Earth3D.cyrcleMoved = false;
+Earth3D.show = function(x, y, r) {
+    if (x == 0) {
+        //hide
+        Earth3D.visible = false;
+        return;
+    }
+    Earth3D.visible = true;
+    Earth3D.cyrcleMoved = Earth3D.lastCyrcle2D.x != x || Earth3D.lastCyrcle2D.y != y || Earth3D.lastCyrcle2D.z != r;
+    Earth3D.lastCyrcle2D.x = x;
+    Earth3D.lastCyrcle2D.y = y;
+    Earth3D.lastCyrcle2D.z = r;
 }
