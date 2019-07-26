@@ -123,7 +123,7 @@ Earth3D.init = function(canvasName) {
             var cyrcle = new THREE.Vector3();
             cyrcle.x = (Earth3D.lastCyrcle2D.x / width) * 2 - 1;
             cyrcle.y = -(Earth3D.lastCyrcle2D.y / height) * 2 + 1;
-            cyrcle.z = (Earth3D.lastCyrcle2D.z / width) * 2 - 1;
+            cyrcle.z = (Earth3D.lastCyrcle2D.z / width) * 2; //- 1;
 
             //move Earth
             var p = {
@@ -144,13 +144,14 @@ Earth3D.init = function(canvasName) {
 
             //resize Earth
             p.x = cyrcle.z;
+            raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(p, camera);
             ray = raycaster.ray;
             if (ray.intersectsPlane(plane)) {
                 var intersect = new THREE.Vector3();
                 ray.intersectPlane(plane, intersect);
                 //resize
-                var newr = Math.min(Math.max(Math.abs(intersect.x), 0.2), 1);
+                var newr = Math.min(Math.max(Math.abs(intersect.x), 0.1), 1);
                 var scaleFactor = newr / earthRadius;
                 containerEarth.scale.x = scaleFactor;
                 containerEarth.scale.y = scaleFactor;

@@ -61,7 +61,7 @@
                 </div>
                 <p class="err" id="errorMessage"></p>
             </div>
-            <div class="col-sm">
+            <!--             <div class="col-sm">
                 <div class="card">
                     <div class="card-header">
                         canvasEarth
@@ -71,14 +71,17 @@
                     </div>
                 </div>
                 <p class="err" id="errorMessage"></p>
-            </div>
+            </div> -->
             <div class="col-sm">
                 <div class="card">
                     <div class="card-header">
                         Drived video
                     </div>
                     <div class="card-block">
-                        <canvas id="canvasOutput" width=320 height=240></canvas>
+                        <div style="position: relative;">
+                            <canvas id="canvasOutput" width=320 height=240 style="display: block"></canvas>
+                            <canvas id="canvasEarth" width=640 height=480 style="position: absolute; display: block; top: 0px; left: 0px"></canvas>
+                        </div>
                     </div>
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item">
@@ -143,6 +146,8 @@
             videoInput.height = videoInput.videoHeight;
             canvasEarth.width = videoInput.width;
             canvasEarth.height = videoInput.height;
+            canvasEarth.style.width = videoInput.width + 'px';
+            canvasEarth.style.height = videoInput.height + 'px';
             startProcessVideo();
         }
 
@@ -172,7 +177,8 @@
         let circlesCache = null;
         let lastCenterX = 0;
         let lastCenterY = 0;
-        const circlesCacheSize = 10;
+        const circlesCacheSize = 15;
+        const circlesSkipLimit = 15;
         let circlesCachIndex = 0;
         let circlesCached = 0;
         let circlesSkipped = 0;
@@ -240,6 +246,7 @@
                     2, 30, hcp1, hcp2, 10, 0);
 
                 // draw circles all
+                /*
                 for (let i = 0; i < circles.cols; ++i) {
                     let x = circles.data32F[i * 3];
                     let y = circles.data32F[i * 3 + 1];
@@ -247,6 +254,7 @@
                     let center = new cv.Point(x, y);
                     cv.circle(dst, center, radius, [0, 0, 0, 255], 3);
                 }
+                */
 
                 //process circles cache
                 if (circles.cols > 0) {
@@ -287,7 +295,7 @@
                 circles.delete();
 
                 //reset cache on skip limit
-                if (circlesSkipped > circlesCacheSize) {
+                if (circlesSkipped > circlesSkipLimit) {
                     circlesCachIndex = 0;
                     circlesCached = 0;
                     circlesSkipped = 0;
@@ -297,11 +305,28 @@
                 //draw circle
                 if (circlesCached >= circlesCacheSize) {
                     //get avg and draw
-                    let mean = cv.mean(circlesCache);
-                    //let center = new cv.Point((lastCenterX + mean[0]) / 2, (lastCenterY + mean[1]) / 2);
-                    let center = new cv.Point(lastCenterX, lastCenterY);
-                    cv.circle(dst, center, mean[2], [255, 0, 0, 255], 3);
-                    Earth3D.show(lastCenterX, lastCenterY, mean[2]);
+                    //avg radius
+                    let rmean = cv.mean(circlesCache);
+                    //avg center
+                    let centers = cv.Mat.zeros(1, 5, circlesCache.type());
+                    let idx = circlesCachIndex;
+                    for (var i = 0; i < 5; i++) {
+                        centers.data32F[i * 3] = circlesCache.data32F[idx * 3];
+                        centers.data32F[i * 3 + 1] = circlesCache.data32F[idx * 3 + 1];
+                        centers.data32F[i * 3 + 2] = 0;
+                        idx--;
+                        if (idx < 0) {
+                            idx = circlesCacheSize - 1;
+                        }
+                    }
+                    let cmean = cv.mean(centers);
+                    centers.delete();
+                    //let center = new cv.Point(lastCenterX, lastCenterY);
+                    let center = new cv.Point(cmean[0], cmean[1]);
+                    //draw
+                    //cv.circle(dst, center, rmean[2], [255, 0, 0, 255], 3);
+                    //Earth3D.show(lastCenterX, lastCenterY, rmean[2]);
+                    Earth3D.show(cmean[0], cmean[1], rmean[2]);
                 }
 
                 cv.imshow('canvasOutput', dst);
